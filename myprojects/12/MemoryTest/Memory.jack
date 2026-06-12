@@ -1,0 +1,155 @@
+// Simple memory manager using a free list.
+// All names and comments rewritten, same behavior.
+
+class Memory {
+
+    static Array ram;        
+    static Array free;       
+    static int start;        
+    static int end;          
+    static int SIZE;         
+    static int NEXT;        
+    static int META;         
+    function void init() {
+
+        let start = 2048;
+        let end = 16384;
+
+        let ram = 0;          
+        let free = start;     
+
+        let SIZE = 0;         
+        let NEXT = 1;
+        let META = -1;        
+        
+        let free[SIZE] = end - start;
+        let free[NEXT] = null;
+
+        return;
+    }
+
+    function int peek(int a) {
+        return ram[a];
+    }
+
+    function void poke(int a, int v) {
+        let ram[a] = v;
+        return;
+    }
+
+    
+    function Array findBlock(int need) {
+        var Array p, best;
+        var int bestSize, curSize;
+
+        let best = null;
+        let bestSize = end - start;
+
+        let p = free;
+
+        if (p[NEXT] = null) {
+            return p; // only one block
+        }
+
+        while (~(p = null)) {
+
+            let curSize = p[SIZE] - 1;   
+
+            if (~(curSize < need) & (curSize < bestSize)) {
+                let best = p;
+                let bestSize = curSize;
+            }
+
+            let p = p[NEXT];
+        }
+
+        return best;
+    }
+
+    // Allocate memory
+    function int alloc(int need) {
+        var Array blk, newBlk, out;
+        let blk = Memory.findBlock(need);
+
+        let out = blk + 1; 
+
+        if (~(blk = null)) {
+
+            // if block is larger than needed, split it
+            if (blk[SIZE] > (need + 3)) {
+
+                let newBlk = blk + need + 1;
+                let newBlk[NEXT] = blk[NEXT];
+                let newBlk[SIZE] = blk[SIZE] - need - 1;
+
+                let out[META] = need + 1;
+
+                let free = newBlk;
+            }
+            else {
+                let newBlk = blk[NEXT];
+                let out[META] = blk[SIZE];
+            }
+
+            let blk = newBlk;
+        }
+
+        return out;
+    }
+
+    
+    function void deAlloc(int addr) {
+        var Array before, next;
+        var int sz;
+
+        let sz = addr[META];
+        let addr = addr - 1; 
+
+        let before = Memory.beforeBlock(addr);
+
+        
+        if (before = null) {
+            let addr[SIZE] = sz;
+            let addr[NEXT] = free;
+            let free = addr;
+        }
+        else {
+
+            if ((before + before[SIZE]) = addr) {
+                let before[SIZE] = before[SIZE] + sz;
+                let addr = before;
+            }
+            else {
+                let addr[SIZE] = sz;
+                let addr[NEXT] = before[NEXT];
+                let before[NEXT] = addr;
+            }
+        }
+
+        
+        if ((addr + addr[SIZE]) = addr[NEXT]) {
+            let next = addr[NEXT];
+            let addr[SIZE] = addr[SIZE] + next[SIZE];
+            let addr[NEXT] = next[NEXT];
+        }
+
+        return;
+    }
+
+    
+    function Array beforeBlock(int addr) {
+        var Array p;
+
+        if (free > addr) {
+            return null;
+        }
+
+        let p = free;
+
+        while (~(p[NEXT] = null) & (p[NEXT] < addr)) {
+            let p = p[NEXT];
+        }
+
+        return p;
+    }
+}
